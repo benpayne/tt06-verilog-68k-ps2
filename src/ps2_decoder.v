@@ -17,7 +17,7 @@ module tt_um_benpayne_ps2_decoder (
 );
 
     // All output pins must be assigned. If not used, assign to 0.
-    assign uio_out = 0;
+    assign uio_out[7:1] = 7'b0000000;
     assign uio_oe  = 8'hFF;   // All pins are outputs
     assign reset  = ~rst_n;  // Invert reset signal
 
