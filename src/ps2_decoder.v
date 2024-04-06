@@ -43,6 +43,7 @@ module tt_um_benpayne_ps2_decoder (
             bit_count <= 0;
             shift_reg <= 0;
             parity_calc <= 0;
+            valid_reg <= 0;
         end
         else begin
             case(state)
@@ -85,11 +86,6 @@ module tt_um_benpayne_ps2_decoder (
                 end
             endcase
         end
-    end
-
-    // Clear valid flag after being set for one cycle
-    always @(posedge valid_reg) begin
-        valid_reg <= 0;
     end
 
 endmodule
