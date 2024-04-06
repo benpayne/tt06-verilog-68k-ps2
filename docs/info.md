@@ -9,12 +9,12 @@ You can also include images in this folder and reference them in the markdown. E
 
 ## How it works
 
-Explain how your project works
+This project takes input from a PS2 device, clock and data signals, it will run this through a shift register and validate start, stop and parity bits.  When a valid message is descoded it will raise the valid pin (uio_io[0]).  This will remain high until the reset is hit and that will clear valid and get the chip ready for decode another signal.  
 
 ## How to test
 
-Explain how to use your project
+It hasn't yets been tested...
 
 ## External hardware
 
-List external hardware used in your project (e.g. PMOD, LED display, etc), if any
+This will use a keyboard or mouse and this ciruit is intended to connect to a retro computer. 
