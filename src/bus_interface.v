@@ -38,13 +38,6 @@ module cpu68k_interface(
         end
     end
 
-    // Additional logic to ensure clr, data_rdy and dtack are handled properly
-    always @(posedge clk) begin
-        if (clr) clr <= 0;  // Reset clr after being set
-        if (data_rdy) data_rdy <= 0;  // Reset data_rdy after being set
-        if (!dtack) dtack <= 1;   // De-assert DTACK when not in active transaction
-    end
-
     initial begin
         $monitor("uio_out=%h uio_oe=%b clr=%b data_rdy=%b dtack=%b", uio_out, uio_oe, clr, data_rdy, dtack);
     end
