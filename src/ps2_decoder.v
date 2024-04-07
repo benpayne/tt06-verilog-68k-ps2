@@ -23,7 +23,7 @@ module ps2_decoder (
 
     reg [3:0] state = IDLE;
     reg [3:0] bit_count = 0;
-    reg [8:0] shift_reg = 0;  // Includes parity bit
+    reg [7:0] shift_reg = 0;  // Includes parity bit
     reg parity_calc = 0;
     reg ps2_clk_prev = 1;
     
