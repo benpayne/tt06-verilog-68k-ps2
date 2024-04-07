@@ -20,10 +20,13 @@ module tt_um_benpayne_ps2_decoder (
     wire [7:0] ps2_data_bus;
     wire bus_oe;
     wire dec_rst;
+    wire dtack;
 
     reg [7:0] uio_oe_reg;
 
     assign uio_oe = uio_oe_reg;
+    assign uo_out[0] = dtack;
+    assign uo_out[7:1] = 7'b0000000;
 
     ps2_decoder decoder (
         .ps2_clk(ui_in[0]),  // PS2 Clock Input
@@ -43,7 +46,7 @@ module tt_um_benpayne_ps2_decoder (
         .uio_out(uio_out), // Data bus output
         .uio_oe(bus_oe),   // Output enable for the data bus
         .clr(dec_rst),        // Output high during a read cycle with clock high
-        .dtack(uo_out[0]),       // Data acknowledge signal, active low
+        .dtack(dtack),       // Data acknowledge signal, active low
         .read_reg(ps2_data_bus)     // Internal register for read
     );
 

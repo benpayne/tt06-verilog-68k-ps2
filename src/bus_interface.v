@@ -42,7 +42,15 @@ module cpu68k_interface(
     always @(posedge clk) begin
         if (clr) clr <= 0;  // Reset clr after being set
         if (data_rdy) data_rdy <= 0;  // Reset data_rdy after being set
-        if (!cs || !ds) dtack <= 1;   // De-assert DTACK when not in active transaction
+        if (!dtack) dtack <= 1;   // De-assert DTACK when not in active transaction
     end
 
+    initial begin
+        $monitor("uio_out=%h uio_oe=%b clr=%b data_rdy=%b dtack=%b", uio_out, uio_oe, clr, data_rdy, dtack);
+        uio_out <= 8'bZZZZZZZZ;  // Initialize the output bus to high impedance
+        uio_oe <= 0;  // Initialize the output enable to disabled
+        clr <= 0;     // Initialize the clear signal to low
+        data_rdy <= 0;  // Initialize the data ready signal to low
+        dtack <= 1;    // Initialize the data acknowledge signal to high
+    end
 endmodule
