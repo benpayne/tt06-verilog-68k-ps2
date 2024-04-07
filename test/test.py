@@ -45,6 +45,7 @@ async def setup_test(dut):
     await RisingEdge(dut.clk)  # Wait for a clock edge
     dut.rst_n.value = 1
     await RisingEdge(dut.clk)  # Wait for another clock edge to ensure clear reset
+    await RisingEdge(dut.clk)  # Wait for another clock edge to ensure clear reset
 
 @cocotb.test()
 async def write_test(dut):
