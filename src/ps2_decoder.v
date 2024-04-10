@@ -42,17 +42,10 @@ module ps2_decoder (
             if (ps2_clk_prev && !ps2_clk) begin  // Detect falling edge
                 case(state)
                     IDLE: begin
-                        if (ps2_data == 0) begin  // Start bit detected
-                            state <= START_BIT;
-                        end
-                    end
-                    START_BIT: begin
                         if (ps2_data == 0) begin  // Confirm start bit
                             state <= DATA_BITS;
                             bit_count <= 0;
                             parity_calc <= 0;
-                        end else begin
-                            state <= IDLE;
                         end
                     end
                     DATA_BITS: begin
@@ -73,10 +66,8 @@ module ps2_decoder (
                     STOP_BIT: begin
                         if (ps2_data == 1) begin  // Stop bit
                             valid <= 1;
-                            state <= IDLE;
-                        end else begin
-                            state <= IDLE;  // Stop bit error
-                        end
+                        end 
+                        state <= IDLE;  // Stop bit error
                     end
                 endcase
             end
