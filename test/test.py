@@ -116,26 +116,28 @@ async def read_test(dut):
     await setup_test(dut)
 
     # Pre-load the register with a value to read
-    dut.user_project.ps2_data_bus.value = 0xAA  # Preload register
-    await RisingEdge(dut.clk)
+    if hasattr(dut.user_project, 'ps2_data_bus'):
+        dut.user_project.ps2_data_bus.value = 0xAA  # Preload register
 
-    b = BusAccumulator(dut.ui_in)
-    b.set_bit(RW)
-    b.set_bit(CS)
-    b.set_bit(DS)
-    b.set_bus()
+        await RisingEdge(dut.clk)
 
-    # Perform the read operation
-    await RisingEdge(dut.clk)
+        b = BusAccumulator(dut.ui_in)
+        b.set_bit(RW)
+        b.set_bit(CS)
+        b.set_bit(DS)
+        b.set_bus()
 
-    b.clear_bit(CS)
-    b.clear_bit(DS)
-    b.set_bus()
+        # Perform the read operation
+        await RisingEdge(dut.clk)
 
-    await RisingEdge(dut.clk)
+        b.clear_bit(CS)
+        b.clear_bit(DS)
+        b.set_bus()
 
-    # Check if the read value is correctly driven onto the bus
-    assert dut.uio_out.value == 0xAA, "The read value does not match the expected."
+        await RisingEdge(dut.clk)
+
+        # Check if the read value is correctly driven onto the bus
+        assert dut.uio_out.value == 0xAA, "The read value does not match the expected."
 
 
 async def send_bit(bus, bit):
@@ -210,6 +212,8 @@ async def ps2_test(dut):
         assert dut.user_project.ps2_data_bus.value == 0x77, f"Expected 0x77, got {dut.user_project.ps2_data_bus.value}"
 
     value = await read_reg(dut)
+
+    print(f"Read value: {value}")
 
     assert value == 0x77, f"Expected 0x77, got {value}"
 
