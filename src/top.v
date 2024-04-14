@@ -20,19 +20,20 @@ module tt_um_benpayne_ps2_decoder (
     wire [7:0] ps2_data_bus;
     wire bus_oe;
     wire dec_rst;
+    wire clr;
     wire dtack;
 
     reg [7:0] uio_oe_reg;
 
     assign uio_oe = uio_oe_reg;
-    assign uo_out[0] = dtack;
-    assign uo_out[7:1] = 7'b0000000;
+    assign uo_out[7:2] = 6'b000000;
+    assign dec_rst = !rst_n || clr;
 
     ps2_decoder decoder (
         .ps2_clk(ui_in[0]),  // PS2 Clock Input
         .ps2_data(ui_in[1]), // PS2 Data Input
         .reset(dec_rst),      // Reset signal
-        .valid(valid),   // IOs: Input path
+        .valid(uo_out[1]),   // IOs: Input path
         .data(ps2_data_bus),  // IOs: Output path
         .clk(clk)            // clock
     );
@@ -42,13 +43,15 @@ module tt_um_benpayne_ps2_decoder (
         .cs(ui_in[2]),          // Chip select, active high
         .ds(ui_in[3]),        // Data strobe, active high
         .rw(ui_in[4]),         // Read/Write line, high for read, low for write
+        .reset(!rst_n),      // Reset signal
         .uio_in(uio_in),  // Data bus input
         .uio_out(uio_out), // Data bus output
         .uio_oe(bus_oe),   // Output enable for the data bus
-        .clr(dec_rst),        // Output high during a read cycle with clock high
-        .dtack(dtack),       // Data acknowledge signal, active low
+        .clr(clr),        // Output high during a read cycle with clock high
+        .dtack(uo_out[0]),       // Data acknowledge signal, active low
         .read_reg(ps2_data_bus)     // Internal register for read
     );
+
 
     always @(posedge clk) begin
         if (bus_oe) begin

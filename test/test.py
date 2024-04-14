@@ -39,13 +39,26 @@ class BusAccumulator:
 
 def read_dtack(dut):
     """Read the DTACK signal from the device."""
-    return dut.uo_out.value & 0x01
+    return dut.uo_out.value & 1
+
+async def wait_int(dut):
+    """Read the Interrupt signal from the device."""
+    
+    while not dut.uo_out.value & 2:
+        await Edge(dut.uo_out)
+
 
 async def setup_test(dut):
     """Common setup for each test: resetting the device and starting the clock."""
     cocotb.start_soon(Clock(dut.clk, 10, units="us").start())  # Start a 10us period clock
 
-    dut.ui_in.value = 0  # Set all inputs low
+    b = BusAccumulator(dut.ui_in)
+    b.set_bit(PS2_CLK)
+    b.set_bit(PS2_DATA)
+    b.set_bit(RW)
+    b.set_bit(CS)
+    b.set_bit(DS)
+    b.set_bus()
 
     # Reset the device
     dut.rst_n.value = 0
@@ -57,21 +70,91 @@ async def setup_test(dut):
 
 async def read_reg(dut):
     """Read the BusDevice register."""
+    await RisingEdge(dut.clk) # S0
     b = BusAccumulator(dut.ui_in)
     b.set_bit(RW)
     b.set_bit(CS)
     b.set_bit(DS)
     b.set_bus()
 
-    await RisingEdge(dut.clk)
+    await RisingEdge(dut.clk) # S2 
 
     b.clear_bit(CS)
     b.clear_bit(DS)
     b.set_bus()
 
-    await RisingEdge(dut.clk)
+    await RisingEdge(dut.clk) # S4
+    await FallingEdge(dut.clk) # S5
+    
+    if hasattr(dut.user_project, 'dtack'):
+        assert dut.user_project.dtack.value == 0, "Inernal DTACK not low"
+    assert read_dtack(dut) == 0, f"DTACK should be low. {dut.uo_out.value}"
+    
+    #while read_dtack(dut):
+    #    await FallingEdge(dut.clk) # Wait Cycle
 
-    return dut.uio_out.value
+    await FallingEdge(dut.clk) # S7
+
+    b.set_bit(CS)
+    b.set_bit(DS)
+    b.set_bus()
+
+    assert dut.uio_oe.value == 0xFF, f"OE should be high. {dut.uo_out.value}"
+
+    result = dut.uio_out.value
+
+    await RisingEdge(dut.clk) # S0' 
+
+    await FallingEdge(dut.clk) # S1'
+
+    assert read_dtack(dut) == 1, f"DTACK should return high. {dut.uo_out.value}"
+
+    return result
+
+
+async def write_reg(dut, value):
+    print(f"Write reg {value}, {dut.uo_out.value}")
+    assert read_dtack(dut) == 1, f"DTACK should be high. {dut.uo_out.value}"
+
+    await RisingEdge(dut.clk) # S0 
+    # clear state from any previous test
+    b = BusAccumulator(dut.ui_in)
+    b.set_bit(RW)
+    b.set_bit(CS)
+    b.set_bit(DS)
+    b.set_bus()
+
+    await RisingEdge(dut.clk) # S2
+
+    # Set up write operation
+    b.clear_bit(RW)
+    b.clear_bit(CS)
+    b.set_bus()
+
+    await FallingEdge(dut.clk) # S3
+    dut.uio_in.value = 0x55  # Example data to write
+
+    await RisingEdge(dut.clk) # S4
+
+    b.clear_bit(DS)
+    b.set_bus()
+
+    await FallingEdge(dut.clk) # S5 check DTACK went low, otherwise wait state would be added
+
+    assert read_dtack(dut) == 0, f"DTACK should be low. {dut.uo_out.value}"
+
+    await RisingEdge(dut.clk) # S6
+
+    await FallingEdge(dut.clk) # S7 clean up CS, DS and RW
+
+    b.set_bit(RW)
+    b.set_bit(CS)
+    b.set_bit(DS)
+    b.set_bus()
+
+    await FallingEdge(dut.clk) # S1' check dtack is cleared
+
+    assert read_dtack(dut) == 1, f"DTACK should be high after write. {dut.uo_out.value}"
 
 
 @cocotb.test()
@@ -79,35 +162,12 @@ async def write_test(dut):
     """Test writing to the BusDevice register."""
     await setup_test(dut)
 
-    assert read_dtack(dut) == 1, f"DTACK should be high. {dut.uo_out.value}"
-
-    # Set up write operation
-    b = BusAccumulator(dut.ui_in)
-    b.clear_bit(RW)
-    b.set_bit(CS)
-    b.set_bit(DS)
-    b.set_bus()
-    dut.uio_in.value = 0x55  # Example data to write
-
-    await RisingEdge(dut.clk)
-
-    assert dut.ui_in.value == 0x0c, f"CS and DS should start high. got {dut.ui_in.value}"
-    assert dut.uio_in.value == 0x55, f"data bus not setup. got {dut.uio_in.value}"
-
-    # Perform the write operation
-    await RisingEdge(dut.clk)
-
-    assert read_dtack(dut) == 0, f"DTACK should be low. {dut.uo_out.value}"
+    await write_reg(dut, 0x55)
 
     # Check if data_rdy is asserted and the output matches the input
     if hasattr(dut.user_project, 'ps2_data_bus'):
         assert dut.user_project.bus.data_rdy.value == 1, "Data ready should be asserted."
         assert dut.user_project.bus.write_reg.value == 0x55, "Data written to the register does not match the input."
-
-    b.clear_bit(CS)
-    b.clear_bit(DS)
-    b.set_bus()
-    await RisingEdge(dut.clk)
 
 
 @cocotb.test()
@@ -119,25 +179,10 @@ async def read_test(dut):
     if hasattr(dut.user_project, 'ps2_data_bus'):
         dut.user_project.ps2_data_bus.value = 0xAA  # Preload register
 
-        await RisingEdge(dut.clk)
-
-        b = BusAccumulator(dut.ui_in)
-        b.set_bit(RW)
-        b.set_bit(CS)
-        b.set_bit(DS)
-        b.set_bus()
-
-        # Perform the read operation
-        await RisingEdge(dut.clk)
-
-        b.clear_bit(CS)
-        b.clear_bit(DS)
-        b.set_bus()
-
-        await RisingEdge(dut.clk)
+        res = await read_reg(dut)
 
         # Check if the read value is correctly driven onto the bus
-        assert dut.uio_out.value == 0xAA, "The read value does not match the expected."
+        assert res == 0xAA, "The read value does not match the expected."
 
 
 async def send_bit(bus, bit):
@@ -205,17 +250,23 @@ async def ps2_test(dut):
 
     await Timer(1, units='ms')  # Wait a bit before starting
 
+    test_byte = 0x78
+
     # Send a byte, for example 0x55
-    await send_ps2_byte(dut, bus, 0x77)
+    await send_ps2_byte(dut, bus, test_byte)
 
     if hasattr(dut.user_project, 'ps2_data_bus'):
-        assert dut.user_project.ps2_data_bus.value == 0x77, f"Expected 0x77, got {dut.user_project.ps2_data_bus.value}"
+        assert dut.user_project.ps2_data_bus.value == test_byte, f"Expected {test_byte}, got {dut.user_project.ps2_data_bus.value}"
 
+    # Wait for the interrupt signal to be asserted
+    await wait_int(dut)
+
+    # Read the value from the register
     value = await read_reg(dut)
 
     print(f"Read value: {value}")
 
-    assert value == 0x77, f"Expected 0x77, got {value}"
+    assert value == test_byte, f"Expected {test_byte}, got {value}"
 
 
 # Create a test factory to handle running both the write and read tests
