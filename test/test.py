@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tiny Tapeout
 # SPDX-License-Identifier: MIT
 import cocotb
-from cocotb.triggers import RisingEdge, FallingEdge
+from cocotb.triggers import RisingEdge, FallingEdge, Edge
 from cocotb.clock import Clock, Timer
 from cocotb.regression import TestFactory
 
