@@ -11,7 +11,7 @@ module cpu68k_interface(
     output reg uio_oe,      // Output enable for the data bus
     output reg clr,         // Output high during a read cycle with clock high
     output reg data_rdy,    // Output high during a write cycle with clock high
-    output reg dtack,       // Data acknowledge signal, active low
+    output wire dtack,       // Data acknowledge signal, active low
     input wire [7:0] read_reg,  // Internal register for read
     output reg [7:0] write_reg  // Internal register for read
 );
@@ -36,6 +36,7 @@ module cpu68k_interface(
             end
         end else begin
             uio_oe <= 0;  // Disable output if not selected or strobed
+            clr <= 0;
         end
     end
 

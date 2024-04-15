@@ -41,10 +41,14 @@ def read_dtack(dut):
     """Read the DTACK signal from the device."""
     return dut.uo_out.value & 1
 
+def read_int(dut):
+    """Read the DTACK signal from the device."""
+    return dut.uo_out.value & 2
+
 async def wait_int(dut):
     """Read the Interrupt signal from the device."""
     
-    while not dut.uo_out.value & 2:
+    while not read_int(dut):
         await Edge(dut.uo_out)
 
 
@@ -238,19 +242,17 @@ async def send_ps2_byte(dut, bus, byte):
     if hasattr(dut.user_project, 'ps2_data_bus'):
         assert dut.user_project.decoder.state.value == 0, f"Expected state 0, got {dut.user_project.decoder.state.value}"
 
-@cocotb.test()
-async def ps2_test(dut):
-    """Test reading from the BusDevice register."""
-    await setup_test(dut)
 
-    bus = BusAccumulator(dut.ui_in)
+async def ps2_read_byte(dut, bus, byte):
     bus.set_bit(PS2_CLK)
     bus.set_bit(PS2_DATA)
     bus.set_bus()
 
+    assert read_int(dut) == 0, f"Interrupt should be low. {dut.uo_out.value}"
+
     await Timer(1, units='ms')  # Wait a bit before starting
 
-    test_byte = 0x78
+    test_byte = byte
 
     # Send a byte, for example 0x55
     await send_ps2_byte(dut, bus, test_byte)
@@ -267,6 +269,18 @@ async def ps2_test(dut):
     print(f"Read value: {value}")
 
     assert value == test_byte, f"Expected {test_byte}, got {value}"
+
+
+@cocotb.test()
+async def ps2_test(dut):
+    """Test reading from the BusDevice register."""
+    await setup_test(dut)
+
+    bus = BusAccumulator(dut.ui_in)
+    print("Sending PS2 byte 0x78")
+    await ps2_read_byte(dut, bus, 0x78)
+    print("Sending PS2 byte 0x34")
+    await ps2_read_byte(dut, bus, 0x34)
 
 
 # Create a test factory to handle running both the write and read tests
